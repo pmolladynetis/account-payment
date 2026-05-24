@@ -87,3 +87,12 @@ def migrate(cr, version):
         AND aml.currency_id != ap.currency_id
     """)
     _logger.info("account_payment_pro: cleaned %s mixed-currency to_pay lines", cr.rowcount)
+
+    # ── 6. Limpiar vistas con campos obsoletos ────────────────────────────────
+    # El campo use_company_currency_on_followup ya no existe en v19
+    cr.execute("""
+        UPDATE ir_ui_view 
+        SET arch_db = '{"en_US": "<data/>", "es_AR": "<data/>"}'::jsonb
+        WHERE arch_db::text LIKE '%use_company_currency_on_followup%'
+    """)
+    _logger.info("account_payment_pro: cleaned %s views with obsolete fields", cr.rowcount)
