@@ -75,3 +75,15 @@ def migrate(cr, version):
     if not openupgrade.column_exists(cr, "account_payment", "counterpart_currency_amount"):
         cr.execute("ALTER TABLE account_payment ADD COLUMN counterpart_currency_amount numeric")
         _logger.info("account_payment_pro: pre-created counterpart_currency_amount column")
+
+    # ── 5. Limpiar líneas de deuda con monedas mixtas ─────────────────────────
+    # Elimina relaciones payment->move_line donde la moneda de la línea
+    # difiere de la moneda del pago, para evitar el error de validación.
+    cr.execute("""
+        DELETE FROM account_move_line_payment_to_pay_rel rel
+        USING account_move_line aml, account_payment ap
+        WHERE rel.to_pay_line_id = aml.id
+        AND rel.payment_id = ap.id
+        AND aml.currency_id != ap.currency_id
+    """)
+    _logger.info("account_payment_pro: cleaned %s mixed-currency to_pay lines", cr.rowcount)
